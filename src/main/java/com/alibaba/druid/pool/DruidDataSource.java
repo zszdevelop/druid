@@ -99,75 +99,75 @@ import com.alibaba.druid.wall.WallProviderStatValue;
  */
 public class DruidDataSource extends DruidAbstractDataSource implements DruidDataSourceMBean, ManagedDataSource, Referenceable, Closeable, Cloneable, ConnectionPoolDataSource, MBeanRegistration {
 
-    private final static Log                 LOG                       = LogFactory.getLog(DruidDataSource.class);
-    private static final long                serialVersionUID          = 1L;
+    private final static Log LOG = LogFactory.getLog(DruidDataSource.class);
+    private static final long serialVersionUID = 1L;
     // stats
-    private volatile long                    recycleErrorCount         = 0L;
-    private long                             connectCount              = 0L;
-    private long                             closeCount                = 0L;
-    private volatile long                    connectErrorCount         = 0L;
-    private long                             recycleCount              = 0L;
-    private long                             removeAbandonedCount      = 0L;
-    private long                             notEmptyWaitCount         = 0L;
-    private long                             notEmptySignalCount       = 0L;
-    private long                             notEmptyWaitNanos         = 0L;
-    private int                              keepAliveCheckCount       = 0;
-    private int                              activePeak                = 0;
-    private long                             activePeakTime            = 0;
-    private int                              poolingPeak               = 0;
-    private long                             poolingPeakTime           = 0;
+    private volatile long recycleErrorCount = 0L;
+    private long connectCount = 0L;
+    private long closeCount = 0L;
+    private volatile long connectErrorCount = 0L;
+    private long recycleCount = 0L;
+    private long removeAbandonedCount = 0L;
+    private long notEmptyWaitCount = 0L;
+    private long notEmptySignalCount = 0L;
+    private long notEmptyWaitNanos = 0L;
+    private int keepAliveCheckCount = 0;
+    private int activePeak = 0;
+    private long activePeakTime = 0;
+    private int poolingPeak = 0;
+    private long poolingPeakTime = 0;
     // store
     private volatile DruidConnectionHolder[] connections;
-    private int                              poolingCount              = 0;
-    private int                              activeCount               = 0;
-    private volatile long                    discardCount              = 0;
-    private int                              notEmptyWaitThreadCount   = 0;
-    private int                              notEmptyWaitThreadPeak    = 0;
+    private int poolingCount = 0;
+    private int activeCount = 0;
+    private volatile long discardCount = 0;
+    private int notEmptyWaitThreadCount = 0;
+    private int notEmptyWaitThreadPeak = 0;
     //
-    private DruidConnectionHolder[]          evictConnections;
-    private DruidConnectionHolder[]          keepAliveConnections;
+    private DruidConnectionHolder[] evictConnections;
+    private DruidConnectionHolder[] keepAliveConnections;
 
     // threads
-    private volatile ScheduledFuture<?>      destroySchedulerFuture;
-    private DestroyTask                      destroyTask;
+    private volatile ScheduledFuture<?> destroySchedulerFuture;
+    private DestroyTask destroyTask;
 
-    private volatile Future<?>               createSchedulerFuture;
+    private volatile Future<?> createSchedulerFuture;
 
-    private CreateConnectionThread           createConnectionThread;
-    private DestroyConnectionThread          destroyConnectionThread;
-    private LogStatsThread                   logStatsThread;
-    private int                              createTaskCount;
+    private CreateConnectionThread createConnectionThread;
+    private DestroyConnectionThread destroyConnectionThread;
+    private LogStatsThread logStatsThread;
+    private int createTaskCount;
 
-    private volatile long                    createTaskIdSeed          = 1L;
-    private long[]                           createTasks;
+    private volatile long createTaskIdSeed = 1L;
+    private long[] createTasks;
 
-    private final CountDownLatch             initedLatch               = new CountDownLatch(2);
+    private final CountDownLatch initedLatch = new CountDownLatch(2);
 
-    private volatile boolean                 enable                    = true;
+    private volatile boolean enable = true;
 
-    private boolean                          resetStatEnable           = true;
-    private volatile long                    resetCount                = 0L;
+    private boolean resetStatEnable = true;
+    private volatile long resetCount = 0L;
 
-    private String                           initStackTrace;
+    private String initStackTrace;
 
-    private volatile boolean                 closing                   = false;
-    private volatile boolean                 closed                    = false;
-    private long                             closeTimeMillis           = -1L;
+    private volatile boolean closing = false;
+    private volatile boolean closed = false;
+    private long closeTimeMillis = -1L;
 
-    protected JdbcDataSourceStat             dataSourceStat;
+    protected JdbcDataSourceStat dataSourceStat;
 
-    private boolean                          useGlobalDataSourceStat   = false;
-    private boolean                          mbeanRegistered           = false;
-    public static ThreadLocal<Long>          waitNanosLocal            = new ThreadLocal<Long>();
-    private boolean                          logDifferentThread        = true;
-    private volatile boolean                 keepAlive                 = false;
-    private boolean                          asyncInit                 = false;
-    protected boolean                        killWhenSocketReadTimeout = false;
-    protected boolean                        checkExecuteTime          = false;
+    private boolean useGlobalDataSourceStat = false;
+    private boolean mbeanRegistered = false;
+    public static ThreadLocal<Long> waitNanosLocal = new ThreadLocal<Long>();
+    private boolean logDifferentThread = true;
+    private volatile boolean keepAlive = false;
+    private boolean asyncInit = false;
+    protected boolean killWhenSocketReadTimeout = false;
+    protected boolean checkExecuteTime = false;
 
-    private static List<Filter>              autoFilters               = null;
-    private boolean                          loadSpifilterSkip         = false;
-    private volatile DataSourceDisableException disableException       = null;
+    private static List<Filter> autoFilters = null;
+    private boolean loadSpifilterSkip = false;
+    private volatile DataSourceDisableException disableException = null;
 
     protected static final AtomicLongFieldUpdater<DruidDataSource> recycleErrorCountUpdater
             = AtomicLongFieldUpdater.newUpdater(DruidDataSource.class, "recycleErrorCount");
@@ -178,11 +178,11 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
     protected static final AtomicLongFieldUpdater<DruidDataSource> createTaskIdSeedUpdater
             = AtomicLongFieldUpdater.newUpdater(DruidDataSource.class, "createTaskIdSeed");
 
-    public DruidDataSource(){
+    public DruidDataSource() {
         this(false);
     }
 
-    public DruidDataSource(boolean fairLock){
+    public DruidDataSource(boolean fairLock) {
         super(fairLock);
 
         configFromPropety(System.getProperties());
@@ -797,7 +797,15 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         this.connectProperties = properties;
     }
 
+    /**
+     * init方法是使用 DruidDataSource的入口。
+     *
+     * @throws SQLException
+     */
     public void init() throws SQLException {
+
+        // 1. 双层校验
+        // 1.1 判断inited状态，这样确保init方法在同一个DataSource对象中只会被执行一次。（后面有加锁）。
         if (inited) {
             return;
         }
@@ -805,6 +813,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         // bug fixed for dead lock, for issue #2980
         DruidDriver.getInstance();
 
+        //1.2  之后内部开启要给ReentrantLock。这个lock调用lockInterruptibly。 如果获取不到lock,则会将当前的线程休眠
         final ReentrantLock lock = this.lock;
         try {
             lock.lockInterruptibly();
@@ -812,14 +821,17 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             throw new SQLException("interrupt", e);
         }
 
+        //1.3 再次检测inited状态。如果为true,则返回。这里做了一个DoubleCheck。
         boolean init = false;
         try {
             if (inited) {
                 return;
             }
 
+            // 1.4 定义initStackTrace ，为后续需要getInitStackTrace方法使用。
             initStackTrace = Utils.toString(Thread.currentThread().getStackTrace());
 
+            // 1.5 生成DruidDataSource的id。这是一个AtomicInteger，从1开始递增，每个DataSource都会加1。
             this.id = DruidDriver.createDataSourceId();
             if (this.id > 1) {
                 long delta = (this.id - 1) * 100000;
@@ -829,15 +841,19 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 this.transactionIdSeedUpdater.addAndGet(this, delta);
             }
 
+            // 2. 初始化
+            // 2.1 初始化jdbcUrl。trim处理。
             if (this.jdbcUrl != null) {
                 this.jdbcUrl = this.jdbcUrl.trim();
                 initFromWrapDriverUrl();
             }
 
+            // 2.2 初始化的Filter处理，默认会增加要给StatFilter。
             for (Filter filter : filters) {
                 filter.init(this);
             }
 
+            // 2.3 根据dbType,进行cacheServerConfiguration的特殊处理。部分数据库需要将这个参数设置为false。
             if (this.dbTypeName == null || this.dbTypeName.length() == 0) {
                 this.dbTypeName = JdbcUtils.getDbType(jdbcUrl, null);
             }
@@ -858,6 +874,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 }
             }
 
+            // 2.4 对maxActive、minIdle、timeBetweenLogStatsMillis、maxEvictableIdleTimeMillis、keepAlive、keepAliveBetweenTimeMillis等参数进行校验。
             if (maxActive <= 0) {
                 throw new IllegalArgumentException("illegal maxActive " + maxActive);
             }
@@ -886,16 +903,23 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 this.driverClass = driverClass.trim();
             }
 
+            // 2.5 初始化SPI
             initFromSPIServiceLoader();
 
+            // 2.6 解决驱动相关的配置
             resolveDriver();
 
+            // 2.7 初始化校验
             initCheck();
 
+            // 2.8 初始化异常存储
             initExceptionSorter();
+            // 2.9 初始化validConnectionChecker 不同的数据库的对象不同
             initValidConnectionChecker();
+            // 2.10 校验连接查询的sql
             validationQueryCheck();
 
+            // 2.11 之后，dataSourceStat是否采用了Global。对dataSourceStat进行set。
             if (isUseGlobalDataSourceStat()) {
                 dataSourceStat = JdbcDataSourceStat.getGlobal();
                 if (dataSourceStat == null) {
@@ -910,20 +934,29 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             }
             dataSourceStat.setResetStatEnable(this.resetStatEnable);
 
+            // 2.12 初始化holder的数组：
             connections = new DruidConnectionHolder[maxActive];
             evictConnections = new DruidConnectionHolder[maxActive];
             keepAliveConnections = new DruidConnectionHolder[maxActive];
 
             SQLException connectError = null;
 
+            // 3. 创建连接
+            // 3.1 判断是否进行异步初始化
             if (createScheduler != null && asyncInit) {
+                // 3.2 如果异步初始化，调用通过submitCreateTask进行。
                 for (int i = 0; i < initialSize; ++i) {
                     submitCreateTask(true);
                 }
             } else if (!asyncInit) {
                 // init connections
+                // 3.3 如果poolingCount < initialSize，则创建物理连接。
+                // 3.3.1 如果initialSize不配置为0，在初始化过程中，这个条件不会被触发，这样只有真正需要Connection的时候，才会去创建物理的连接。
+                //  3.3.2 如果指定了initialSize，则在初始化的过程中，初始化线程就创建了initialSize的连接的holder并放置到connections中。
                 while (poolingCount < initialSize) {
                     try {
+//                        在同步初始化的条件下，初始化操作将通过init线程进行。而后续由于连接池使用过程中动态的收缩和扩展，则是由其他单独的线程来完成。
+//                        反之，如果需要进行异步初始化，则会调用submitCreateTask方法来异步进行。
                         PhysicalConnectionInfo pyConnectInfo = createPhysicalConnection();
                         DruidConnectionHolder holder = new DruidConnectionHolder(this, pyConnectInfo);
                         connections[poolingCount++] = holder;
@@ -944,11 +977,20 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 }
             }
 
+            // 4. 创建线程
+            // 4.1 创建日志线程  但是这个线程的条件timeBetweenLogStatsMillis大于0，如果这个参数没有配置，日志线程不会创建。
             createAndLogThread();
+            // 4.2 创建一个CreateConnectionThread对象，并启动。初始化变量createConnectionThread。
             createAndStartCreatorThread();
+            // 4.3 创建 DestroyTask对象。同时创建DestroyConnectionThread线程，并start,初始化destroyConnectionThread。
             createAndStartDestroyThread();
 
+            // 4.4 在initedLatch处等待。
+            // initedLatch会在createAndStartCreatorThread与createAndStartDestroyThread都执行完之后，countdown结束。
+            //这个地方是用来确保上述两个方法都执行完毕，再进行后续的操作。
             initedLatch.await();
+
+            // 4.5 之后 init 状态为true,并初始化initedTime时间为当前的Date时间。注册registerMbean。
             init = true;
 
             initedTime = new Date();
@@ -958,6 +1000,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 throw connectError;
             }
 
+            // 4.6 如果keepAlive为true,还需调用submitCreateTask方法，将连接填充到minIdle。确保空闲的连接可用。
             if (keepAlive) {
                 // async fill to minIdle
                 if (createScheduler != null) {
@@ -974,17 +1017,20 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             throw e;
         } catch (InterruptedException e) {
             throw new SQLException(e.getMessage(), e);
-        } catch (RuntimeException e){
+        } catch (RuntimeException e) {
             LOG.error("{dataSource-" + this.getID() + "} init error", e);
             throw e;
-        } catch (Error e){
+        } catch (Error e) {
             LOG.error("{dataSource-" + this.getID() + "} init error", e);
             throw e;
 
         } finally {
+            // 5 finally处理
+            // 5.1 修改inited为true,并解锁。
             inited = true;
             lock.unlock();
 
+            // 5.2 判断init和日志的INFO状态，打印一条init完成的日志。
             if (init && LOG.isInfoEnabled()) {
                 String msg = "{dataSource-" + this.getID();
 
@@ -1078,7 +1124,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 period = 1000;
             }
             destroySchedulerFuture = destroyScheduler.scheduleAtFixedRate(destroyTask, period, period,
-                                                                          TimeUnit.MILLISECONDS);
+                    TimeUnit.MILLISECONDS);
             initedLatch.countDown();
             return;
         }
@@ -1101,7 +1147,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     /**
      * load filters from SPI ServiceLoader
-     * 
+     *
      * @see ServiceLoader
      */
     private void initFromSPIServiceLoader() {
@@ -1152,7 +1198,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     /**
      * 会去重复
-     * 
+     *
      * @param filter
      */
     private void addFilter(Filter filter) {
@@ -1236,7 +1282,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
             if (driver.getMajorVersion() < 10) {
                 throw new SQLException("not support oracle driver " + driver.getMajorVersion() + "."
-                                       + driver.getMinorVersion());
+                        + driver.getMinorVersion());
             }
 
             if (driver.getMajorVersion() == 10 && isUseOracleImplicitCache()) {
@@ -1280,7 +1326,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         if (query instanceof SQLSelectQueryBlock) {
             if (((SQLSelectQueryBlock) query).getFrom() == null) {
                 LOG.error("invalid oracle validationQuery. " + validationQuery + ", may should be : " + validationQuery
-                          + " FROM DUAL");
+                        + " FROM DUAL");
             }
         }
     }
@@ -1309,7 +1355,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         if (query instanceof SQLSelectQueryBlock) {
             if (((SQLSelectQueryBlock) query).getFrom() == null) {
                 LOG.error("invalid db2 validationQuery. " + validationQuery + ", may should be : " + validationQuery
-                          + " FROM SYSDUMMY");
+                        + " FROM SYSDUMMY");
             }
         }
     }
@@ -1328,8 +1374,8 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             this.validConnectionChecker = new OracleValidConnectionChecker();
 
         } else if (realDriverClassName.equals(JdbcConstants.SQL_SERVER_DRIVER)
-                   || realDriverClassName.equals(JdbcConstants.SQL_SERVER_DRIVER_SQLJDBC4)
-                   || realDriverClassName.equals(JdbcConstants.SQL_SERVER_DRIVER_JTDS)) {
+                || realDriverClassName.equals(JdbcConstants.SQL_SERVER_DRIVER_SQLJDBC4)
+                || realDriverClassName.equals(JdbcConstants.SQL_SERVER_DRIVER_JTDS)) {
             this.validConnectionChecker = new MSSQLValidConnectionChecker();
 
         } else if (realDriverClassName.equals(JdbcConstants.POSTGRESQL_DRIVER)
@@ -1349,7 +1395,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
 
 
-        for (Class<?> driverClass = driver.getClass();;) {
+        for (Class<?> driverClass = driver.getClass(); ; ) {
             String realDriverClassName = driverClass.getName();
             if (realDriverClassName.equals(JdbcConstants.MYSQL_DRIVER) //
                     || realDriverClassName.equals(JdbcConstants.MYSQL_DRIVER_6)) {
@@ -1398,12 +1444,16 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
     }
 
     public DruidPooledConnection getConnection(long maxWaitMillis) throws SQLException {
+        //执行初始化
         init();
 
+        //如果filter存在 则执行filter,通过filter的代理类来得到连接。
         if (filters.size() > 0) {
+            //filter的chain
             FilterChainImpl filterChain = new FilterChainImpl(this);
             return filterChain.dataSource_connect(this, maxWaitMillis);
         } else {
+            //如果filter不存在，则直接获取连接。
             return getConnectionDirect(maxWaitMillis);
         }
     }
@@ -1420,10 +1470,11 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     public DruidPooledConnection getConnectionDirect(long maxWaitMillis) throws SQLException {
         int notFullTimeoutRetryCnt = 0;
-        for (;;) {
+        for (; ; ) {
             // handle notFullTimeoutRetry
             DruidPooledConnection poolableConnection;
             try {
+                // 最终得到connection的方法：
                 poolableConnection = getConnectionInternal(maxWaitMillis);
             } catch (GetConnectionTimeoutException ex) {
                 if (notFullTimeoutRetryCnt <= this.notFullTimeoutRetryCount && !isFull()) {
@@ -1454,10 +1505,10 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
                 if (testWhileIdle) {
                     final DruidConnectionHolder holder = poolableConnection.holder;
-                    long currentTimeMillis             = System.currentTimeMillis();
-                    long lastActiveTimeMillis          = holder.lastActiveTimeMillis;
-                    long lastExecTimeMillis            = holder.lastExecTimeMillis;
-                    long lastKeepTimeMillis            = holder.lastKeepTimeMillis;
+                    long currentTimeMillis = System.currentTimeMillis();
+                    long lastActiveTimeMillis = holder.lastActiveTimeMillis;
+                    long lastExecTimeMillis = holder.lastExecTimeMillis;
+                    long lastKeepTimeMillis = holder.lastKeepTimeMillis;
 
                     if (checkExecuteTime
                             && lastExecTimeMillis != lastActiveTimeMillis) {
@@ -1468,7 +1519,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                         lastActiveTimeMillis = lastKeepTimeMillis;
                     }
 
-                    long idleMillis                    = currentTimeMillis - lastActiveTimeMillis;
+                    long idleMillis = currentTimeMillis - lastActiveTimeMillis;
 
                     long timeBetweenEvictionRunsMillis = this.timeBetweenEvictionRunsMillis;
 
@@ -1478,7 +1529,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
                     if (idleMillis >= timeBetweenEvictionRunsMillis
                             || idleMillis < 0 // unexcepted branch
-                            ) {
+                    ) {
                         boolean validate = testConnectionInternal(poolableConnection.holder, poolableConnection.conn);
                         if (!validate) {
                             if (LOG.isDebugEnabled()) {
@@ -1486,7 +1537,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                             }
 
                             discardConnection(poolableConnection.holder);
-                             continue;
+                            continue;
                         }
                     }
                 }
@@ -1516,7 +1567,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     /**
      * 抛弃连接，不进行回收，而是抛弃
-     * 
+     *
      * @param realConnection
      * @deprecated
      */
@@ -1589,7 +1640,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
         DruidConnectionHolder holder;
 
-        for (boolean createDirect = false;;) {
+        for (boolean createDirect = false; ; ) {
             if (createDirect) {
                 createStartNanosUpdater.set(this, System.nanoTime());
                 if (creatingCountUpdater.compareAndSet(this, 0, 1)) {
@@ -1738,10 +1789,10 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
             StringBuilder buf = new StringBuilder(128);
             buf.append("wait millis ")//
-               .append(waitNanos / (1000 * 1000))//
-               .append(", active ").append(activeCount)//
-               .append(", maxActive ").append(maxActive)//
-               .append(", creating ").append(creatingCount)//
+                    .append(waitNanos / (1000 * 1000))//
+                    .append(", active ").append(activeCount)//
+                    .append(", maxActive ").append(maxActive)//
+                    .append(", creating ").append(creatingCount)//
             ;
             if (creatingCount > 0 && createStartNanos > 0) {
                 long createElapseMillis = (System.nanoTime() - createStartNanos) / (1000 * 1000);
@@ -1778,6 +1829,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
         holder.incrementUseCount();
 
+        // 根据DruidConnectionHolder产生连接池
         DruidPooledConnection poolalbeConnection = new DruidPooledConnection(holder);
         return poolalbeConnection;
     }
@@ -1856,13 +1908,12 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             lock.unlock();
         }
 
-        if(onFatalError && holder != null && holder.getDataSource() != null) {
+        if (onFatalError && holder != null && holder.getDataSource() != null) {
             ReentrantLock dataSourceLock = holder.getDataSource().lock;
             dataSourceLock.lock();
             try {
                 emptySignal();
-            }
-            finally {
+            } finally {
                 dataSourceLock.unlock();
             }
         }
@@ -1899,8 +1950,8 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
 
         if (logDifferentThread //
-            && (!isAsyncCloseConnectionEnable()) //
-            && pooledConnection.ownerThread != Thread.currentThread()//
+                && (!isAsyncCloseConnectionEnable()) //
+                && pooledConnection.ownerThread != Thread.currentThread()//
         ) {
             LOG.warn("get/close not same thread");
         }
@@ -2152,7 +2203,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 @Override
                 public Object run() {
                     ObjectName objectName = DruidDataSourceStatManager.addDataSource(DruidDataSource.this,
-                                                                                     DruidDataSource.this.name);
+                            DruidDataSource.this.name);
 
                     DruidDataSource.this.setObjectName(objectName);
                     DruidDataSource.this.mbeanRegistered = true;
@@ -2246,7 +2297,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
     private DruidConnectionHolder pollLast(long nanos) throws InterruptedException, SQLException {
         long estimate = nanos;
 
-        for (;;) {
+        for (; ; ) {
             if (poolingCount == 0) {
                 emptySignal(); // send signal to CreateThread create connection
 
@@ -2267,8 +2318,8 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 try {
                     long startEstimate = estimate;
                     estimate = notEmpty.awaitNanos(estimate); // signal by
-                                                              // recycle or
-                                                              // creator
+                    // recycle or
+                    // creator
                     notEmptyWaitCount++;
                     notEmptyWaitNanos += (startEstimate - estimate);
 
@@ -2492,7 +2543,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         value.setCommitCount(commitCountUpdater.getAndSet(this, 0));
         value.setRollbackCount(rollbackCountUpdater.getAndSet(this, 0));
 
-        value.setPstmtCacheHitCount(cachedPreparedStatementHitCountUpdater.getAndSet(this,0));
+        value.setPstmtCacheHitCount(cachedPreparedStatementHitCountUpdater.getAndSet(this, 0));
         value.setPstmtCacheMissCount(cachedPreparedStatementMissCountUpdater.getAndSet(this, 0));
 
         value.setStartTransactionCount(startTransactionCountUpdater.getAndSet(this, 0));
@@ -2570,7 +2621,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 clearCreateTask(createTaskId);
 
                 if (poolingCount + createTaskCount < notEmptyWaitThreadCount //
-                    && activeCount + poolingCount + createTaskCount < maxActive) {
+                        && activeCount + poolingCount + createTaskCount < maxActive) {
                     emptySignal();
                 }
             }
@@ -2582,7 +2633,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     public class CreateConnectionTask implements Runnable {
 
-        private int errorCount   = 0;
+        private int errorCount = 0;
         private boolean initTask = false;
         private final long taskId;
 
@@ -2601,7 +2652,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
 
         private void runInternal() {
-            for (;;) {
+            for (; ; ) {
 
                 // addLast
                 lock.lock();
@@ -2768,7 +2819,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     public class CreateConnectionThread extends Thread {
 
-        public CreateConnectionThread(String name){
+        public CreateConnectionThread(String name) {
             super(name);
             this.setDaemon(true);
         }
@@ -2778,7 +2829,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
             long lastDiscardCount = 0;
             int errorCount = 0;
-            for (;;) {
+            for (; ; ) {
                 // addLast
                 try {
                     lock.lockInterruptibly();
@@ -2838,7 +2889,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                     connection = createPhysicalConnection();
                 } catch (SQLException e) {
                     LOG.error("create connection SQLException, url: " + jdbcUrl + ", errorCode " + e.getErrorCode()
-                              + ", state " + e.getSQLState(), e);
+                            + ", state " + e.getSQLState(), e);
 
                     errorCount++;
                     if (errorCount > connectionErrorRetryAttempts && timeBetweenConnectErrorMillis > 0) {
@@ -2894,7 +2945,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     public class DestroyConnectionThread extends Thread {
 
-        public DestroyConnectionThread(String name){
+        public DestroyConnectionThread(String name) {
             super(name);
             this.setDaemon(true);
         }
@@ -2902,7 +2953,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         public void run() {
             initedLatch.countDown();
 
-            for (;;) {
+            for (; ; ) {
                 // 从前面开始删除
                 try {
                     if (closed || closing) {
@@ -2946,14 +2997,14 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     public class LogStatsThread extends Thread {
 
-        public LogStatsThread(String name){
+        public LogStatsThread(String name) {
             super(name);
             this.setDaemon(true);
         }
 
         public void run() {
             try {
-                for (;;) {
+                for (; ; ) {
                     try {
                         logStats();
                     } catch (Exception e) {
@@ -2979,7 +3030,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         try {
             Iterator<DruidPooledConnection> iter = activeConnections.keySet().iterator();
 
-            for (; iter.hasNext();) {
+            for (; iter.hasNext(); ) {
                 DruidPooledConnection pooledConnection = iter.next();
 
                 if (pooledConnection.isRunning()) {
@@ -3031,7 +3082,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                     }
 
                     buf.append("ownerThread current state is " + pooledConnection.getOwnerThread().getState()
-                               + ", current stackTrace\n");
+                            + ", current stackTrace\n");
                     trace = pooledConnection.getOwnerThread().getStackTrace();
                     for (int i = 0; i < trace.length; i++) {
                         buf.append("\tat ");
@@ -3047,7 +3098,9 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         return removeCount;
     }
 
-    /** Instance key */
+    /**
+     * Instance key
+     */
     protected String instanceKey = null;
 
     public Reference getReference() throws NamingException {
@@ -3117,7 +3170,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         int keepAliveCount = 0;
         int fatalErrorIncrement = fatalErrorCount - fatalErrorCountLastShrink;
         fatalErrorCountLastShrink = fatalErrorCount;
-        
+
         try {
             if (!inited) {
                 return;
@@ -3128,7 +3181,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             for (int i = 0; i < poolingCount; ++i) {
                 DruidConnectionHolder connection = connections[i];
 
-                if ((onFatalError || fatalErrorIncrement > 0) && (lastFatalErrorTimeMillis > connection.connectTimeMillis))  {
+                if ((onFatalError || fatalErrorIncrement > 0) && (lastFatalErrorTimeMillis > connection.connectTimeMillis)) {
                     keepAliveConnections[keepAliveCount++] = connection;
                     continue;
                 }
@@ -3752,7 +3805,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
 
         if (this.statLogger != null
-            && (this.statLogger.getClass() == iface || DruidDataSourceStatLogger.class == iface)) {
+                && (this.statLogger.getClass() == iface || DruidDataSourceStatLogger.class == iface)) {
             return true;
         }
 
@@ -3768,7 +3821,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
 
         if (this.statLogger != null
-            && (this.statLogger.getClass() == iface || DruidDataSourceStatLogger.class == iface)) {
+                && (this.statLogger.getClass() == iface || DruidDataSourceStatLogger.class == iface)) {
             return (T) statLogger;
         }
 
@@ -3812,7 +3865,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
 
         int fillCount = 0;
-        for (;;) {
+        for (; ; ) {
             try {
                 lock.lockInterruptibly();
             } catch (InterruptedException e) {
