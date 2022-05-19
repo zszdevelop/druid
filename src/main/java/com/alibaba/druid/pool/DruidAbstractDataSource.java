@@ -239,8 +239,11 @@ public abstract class DruidAbstractDataSource extends WrapperAdapter implements 
     protected boolean                                  isMySql                                   = false;
     protected boolean                                  useOracleImplicitCache                    = true;
 
+    //可重入锁 lock
     protected ReentrantLock                            lock;
+    // 非空条件变量
     protected Condition                                notEmpty;
+    // 空条件变量
     protected Condition                                empty;
 
     protected ReentrantLock                            activeConnectionLock                      = new ReentrantLock();

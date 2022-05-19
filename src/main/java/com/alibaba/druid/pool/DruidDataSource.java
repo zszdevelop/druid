@@ -981,8 +981,10 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             // 4.1 创建日志线程  但是这个线程的条件timeBetweenLogStatsMillis大于0，如果这个参数没有配置，日志线程不会创建。
             createAndLogThread();
             // 4.2 创建一个CreateConnectionThread对象，并启动。初始化变量createConnectionThread。
+            // 负责创建连接，起到生产者的作用
             createAndStartCreatorThread();
             // 4.3 创建 DestroyTask对象。同时创建DestroyConnectionThread线程，并start,初始化destroyConnectionThread。
+            // 创建并启动线程，该线程的主要作用为销毁线程
             createAndStartDestroyThread();
 
             // 4.4 在initedLatch处等待。
@@ -1103,11 +1105,15 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         return false;
     }
 
+    /**
+     * 日志打印线程
+     */
     private void createAndLogThread() {
         if (this.timeBetweenLogStatsMillis <= 0) {
             return;
         }
 
+        //启动LogStatsThread线程
         String threadName = "Druid-ConnectionPool-Log-" + System.identityHashCode(this);
         logStatsThread = new LogStatsThread(threadName);
         logStatsThread.start();
@@ -1115,9 +1121,14 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         this.resetStatEnable = false;
     }
 
+    /**
+     * 创建并启动线程，该线程的主要作用为销毁线程
+     */
     protected void createAndStartDestroyThread() {
         destroyTask = new DestroyTask();
 
+        //如果连接非常多，单个销毁线程的效率会比较低，如果回收过程出现阻塞等情况，那么此时可以自定义一个destroyScheduler线程持，通过这个线程池配置定始调用回收。
+        //这个地方如果需要使用需要自行配置destroyScheduler并配置参数，这与启动过程的createScheduler类似
         if (destroyScheduler != null) {
             long period = timeBetweenEvictionRunsMillis;
             if (period <= 0) {
@@ -1130,6 +1141,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
 
         String threadName = "Druid-ConnectionPool-Destroy-" + System.identityHashCode(this);
+        //启动销毁线程
         destroyConnectionThread = new DestroyConnectionThread(threadName);
         destroyConnectionThread.start();
     }
@@ -1137,6 +1149,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
     protected void createAndStartCreatorThread() {
         if (createScheduler == null) {
             String threadName = "Druid-ConnectionPool-Create-" + System.identityHashCode(this);
+            //启动线程
             createConnectionThread = new CreateConnectionThread(threadName);
             createConnectionThread.start();
             return;
@@ -2817,6 +2830,9 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
     }
 
+    /**
+     * 负责创建连接，起到生产者的作用
+     */
     public class CreateConnectionThread extends Thread {
 
         public CreateConnectionThread(String name) {
@@ -2829,6 +2845,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
             long lastDiscardCount = 0;
             int errorCount = 0;
+            //死循环：
             for (; ; ) {
                 // addLast
                 try {
@@ -2842,6 +2859,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 lastDiscardCount = discardCount;
 
                 try {
+
                     boolean emptyWait = true;
 
                     if (createError != null
@@ -2855,6 +2873,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                         emptyWait = false;
                     }
 
+                    //根据emptyWait 判断是否能够创建连接
                     if (emptyWait) {
                         // 必须存在线程等待，才创建连接
                         if (poolingCount >= notEmptyWaitThreadCount //
@@ -2886,6 +2905,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 PhysicalConnectionInfo connection = null;
 
                 try {
+                    //创建真实连接
                     connection = createPhysicalConnection();
                 } catch (SQLException e) {
                     LOG.error("create connection SQLException, url: " + jdbcUrl + ", errorCode " + e.getErrorCode()
@@ -2898,8 +2918,10 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                         if (failFast) {
                             lock.lock();
                             try {
+                                //非空信号，通知消费线程来获取
                                 notEmpty.signalAll();
                             } finally {
+                                // 解锁
                                 lock.unlock();
                             }
                         }
@@ -2951,6 +2973,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
 
         public void run() {
+            //死循环，自旋调用
             initedLatch.countDown();
 
             for (; ; ) {
@@ -2960,6 +2983,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                         break;
                     }
 
+                    //sleep时间
                     if (timeBetweenEvictionRunsMillis > 0) {
                         Thread.sleep(timeBetweenEvictionRunsMillis);
                     } else {
@@ -2970,6 +2994,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                         break;
                     }
 
+                    //调用 destroyTask.run()
                     destroyTask.run();
                 } catch (InterruptedException e) {
                     break;
@@ -2995,6 +3020,9 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     }
 
+    /**
+     * 打印日志线程
+     */
     public class LogStatsThread extends Thread {
 
         public LogStatsThread(String name) {
@@ -3160,11 +3188,13 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
     public void shrink(boolean checkTime, boolean keepAlive) {
         try {
+            //获得锁
             lock.lockInterruptibly();
         } catch (InterruptedException e) {
             return;
         }
 
+        //计算removeCount evictCount keepAliveCount等
         boolean needFill = false;
         int evictCount = 0;
         int keepAliveCount = 0;
@@ -3240,6 +3270,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             lock.unlock();
         }
 
+        //如果evictCount大于0 关闭连接
         if (evictCount > 0) {
             for (int i = 0; i < evictCount; ++i) {
                 DruidConnectionHolder item = evictConnections[i];
@@ -3288,10 +3319,13 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                     try {
                         discardCount++;
 
+                        //如果回收之后小于最小空闲连接
                         if (activeCount + poolingCount <= minIdle) {
+                            //通知可以创建新连接了
                             emptySignal();
                         }
                     } finally {
+                        //解锁
                         lock.unlock();
                     }
                 }
