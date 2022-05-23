@@ -5051,11 +5051,12 @@ public class FilterChainImpl implements FilterChain {
 
     @Override
     public DruidPooledConnection dataSource_connect(DruidDataSource dataSource, long maxWaitMillis) throws SQLException {
+        //判断当前filter的指针是否小于filterSize的大小，如果小于，则执行filter的dataSource_getConnection
         if (this.pos < filterSize) {
             DruidPooledConnection conn = nextFilter().dataSource_getConnection(this, dataSource, maxWaitMillis);
             return conn;
         }
-
+        //反之 调用getConnectionDirect 创建数据库连接。
         return dataSource.getConnectionDirect(maxWaitMillis);
     }
 
