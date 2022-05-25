@@ -313,6 +313,7 @@ public final class DruidConnectionHolder {
             underlyingAutoCommit = defaultAutoCommit;
         }
 
+        //清空Listeners
         connectionEventListeners.clear();
         statementEventListeners.clear();
 
@@ -320,14 +321,16 @@ public final class DruidConnectionHolder {
         try {
             for (Object item : statementTrace.toArray()) {
                 Statement stmt = (Statement) item;
+                //关闭statement
                 JdbcUtils.close(stmt);
             }
-            
+            //清空statementTrace
             statementTrace.clear();
         } finally {
             lock.unlock();
         }
 
+        //清空warning信息
         conn.clearWarnings();
     }
 

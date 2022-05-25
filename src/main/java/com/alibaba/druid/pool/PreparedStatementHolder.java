@@ -28,6 +28,7 @@ public final class PreparedStatementHolder {
     public final PreparedStatement    statement;
     private int                       hitCount                 = 0;
 
+    //fetch峰值
     private int                       fetchRowPeak             = -1;
 
     private int                       defaultRowPrefetch       = -1;

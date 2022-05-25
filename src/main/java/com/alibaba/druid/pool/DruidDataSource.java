@@ -495,6 +495,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             if (property != null && property.length() > 0) {
                 try {
                     int value = Integer.parseInt(property);
+                    //set 配置的参数
                     this.setMaxPoolPreparedStatementPerConnectionSize(value);
                 } catch (NumberFormatException e) {
                     LOG.error("illegal property 'druid.maxPoolPreparedStatementPerConnectionSize'", e);
@@ -1999,6 +2000,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
             activeConnectionLock.lock();
             try {
                 if (pooledConnection.traceEnable) {
+                    //将连接从activeConnections中移除 考虑到多线程场景，要加锁
                     oldInfo = activeConnections.remove(pooledConnection);
                     pooledConnection.traceEnable = false;
                 }
@@ -2036,15 +2038,18 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 holder.reset();
             }
 
+            //如果状态为discard 则直接退出
             if (holder.discard) {
                 return;
             }
 
+            //如果超过连接最大的使用次数，那么也将关闭连接
             if (phyMaxUseCount > 0 && holder.useCount >= phyMaxUseCount) {
                 discardConnection(holder);
                 return;
             }
 
+            // 如果连接已经关闭，则加锁，减去计数器即可。
             if (physicalConnection.isClosed()) {
                 lock.lock();
                 try {
@@ -2059,6 +2064,7 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
                 return;
             }
 
+            // 如果开启了testOnReturn,则发送测试数据，如果测试失败，则关闭连接。
             if (testOnReturn) {
                 boolean validate = testConnectionInternal(holder, physicalConnection);
                 if (!validate) {
@@ -2102,12 +2108,15 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
 
             lock.lock();
             try {
+                //修改active状态和activeCount计数器
                 if (holder.active) {
                     activeCount--;
                     holder.active = false;
                 }
+                //增加closeCount计数器
                 closeCount++;
 
+                //将连接放置到数组的末尾
                 result = putLast(holder, currentTimeMillis);
                 recycleCount++;
             } finally {
@@ -3076,50 +3085,71 @@ public class DruidDataSource extends DruidAbstractDataSource implements DruidDat
         }
     }
 
+    /**
+     * 当开启连接泄露检测机制之后，会定期检测连接是否触发超时时间，如果触发则关闭连接。凡是get之后被使用的连接都放置在activeConnections中。
+     * 之后遍历activeConnections，对连接进行判断，如果触发超时时间，则close。
+     * @return
+     */
     public int removeAbandoned() {
         int removeCount = 0;
 
         long currrentNanos = System.nanoTime();
 
+        //定义一个abandonedList来存放符合超时时间的连接。
         List<DruidPooledConnection> abandonedList = new ArrayList<DruidPooledConnection>();
 
+        //加锁
         activeConnectionLock.lock();
         try {
+            //通过迭代器遍历activeConnections
             Iterator<DruidPooledConnection> iter = activeConnections.keySet().iterator();
 
             for (; iter.hasNext(); ) {
+                //获取到连接
                 DruidPooledConnection pooledConnection = iter.next();
 
+                //如果连级为Running状态，说明sql语句正在执行，则跳过当前连接
                 if (pooledConnection.isRunning()) {
                     continue;
                 }
 
+                //计算超时时间 默认值为5分钟
                 long timeMillis = (currrentNanos - pooledConnection.getConnectedTimeNano()) / (1000 * 1000);
-
+                //如果触发超时：
                 if (timeMillis >= removeAbandonedTimeoutMillis) {
+                    //从iter删除该连接
                     iter.remove();
+                    //关闭setTraceEnable
                     pooledConnection.setTraceEnable(false);
+                    //添加到abandonedList
                     abandonedList.add(pooledConnection);
                 }
             }
         } finally {
+            //解锁
             activeConnectionLock.unlock();
         }
 
         if (abandonedList.size() > 0) {
             for (DruidPooledConnection pooledConnection : abandonedList) {
+                // 定义锁
                 final ReentrantLock lock = pooledConnection.lock;
                 lock.lock();
                 try {
+                    //如果连接为disiable状态 说明已经不可用 直接跳过
                     if (pooledConnection.isDisable()) {
                         continue;
                     }
                 } finally {
+                    //解锁
                     lock.unlock();
                 }
 
+                //关闭连接
                 JdbcUtils.close(pooledConnection);
+                //设置abandond状态
                 pooledConnection.abandond();
+                //增加计数器
                 removeAbandonedCount++;
                 removeCount++;
 

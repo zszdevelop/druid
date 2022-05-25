@@ -36,7 +36,9 @@ public class PreparedStatementPool {
 
     private final static Log              LOG = LogFactory.getLog(PreparedStatementPool.class);
 
+    //cache结构
     private final LRUCache                map;
+    //指向dataSource的指针
     private final DruidAbstractDataSource dataSource;
 
     public PreparedStatementPool(DruidConnectionHolder holder){
@@ -191,9 +193,12 @@ public class PreparedStatementPool {
             super(maxSize, 0.75f, true);
         }
 
+        //重写了removeEldestEntry方法
         protected boolean removeEldestEntry(Entry<PreparedStatementKey, PreparedStatementHolder> eldest) {
+            //确认remove状态
             boolean remove = (size() > dataSource.getMaxPoolPreparedStatementPerConnectionSize());
 
+            //关闭statement
             if (remove) {
                 closeRemovedStatement(eldest.getValue());
             }

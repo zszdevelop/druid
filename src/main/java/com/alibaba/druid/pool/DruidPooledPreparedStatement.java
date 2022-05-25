@@ -921,13 +921,16 @@ public class DruidPooledPreparedStatement extends DruidPooledStatement implement
         }
     }
 
-    public static class PreparedStatementKey {
 
+    public static class PreparedStatementKey {
+        //sql语句
         protected final String     sql;
+        //catlog name
         protected final String     catalog;
 
         protected final MethodType methodType;
 
+        //返回值类型
         public final int           resultSetType;
         public final int           resultSetConcurrency;
         public final int           resultSetHoldability;
